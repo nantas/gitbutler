@@ -5,13 +5,19 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "eval": "promptfoo eval -c promptfooconfig.yaml",
-    "eval:repeat": "promptfoo eval -c promptfooconfig.yaml --repeat 3",
-    "view": "promptfoo view"
+    "eval": "promptfoo eval -c promptfooconfig.yaml --max-concurrency 1",
+    "eval:repeat": "promptfoo eval -c promptfooconfig.yaml --max-concurrency 1 --repeat 3",
+    "view": "promptfoo view",
+    "test": "pnpm build && node dist/test-runner.js"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",
     "promptfoo": "^0.119.7",
     "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   }
 }

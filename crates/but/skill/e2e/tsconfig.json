@@ -12,6 +12,8 @@
     "resolveJsonModule": true
   },
   "include": [
+    "types.ts",
+    "test-runner.ts",
     "providers/**/*.ts",
     "assertions/**/*.ts"
   ]
