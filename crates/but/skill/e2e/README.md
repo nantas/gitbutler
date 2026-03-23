@@ -30,10 +30,13 @@ Expected tools:
 
 ```bash
 pnpm install --dir crates/but/skill/e2e --ignore-workspace
-pnpm build
-pnpm run eval
-pnpm run eval:repeat
-pnpm run view
+pnpm --dir crates/but/skill/e2e build
+pnpm --dir crates/but/skill/e2e test assertions
+pnpm --dir crates/but/skill/e2e test providers
+pnpm --dir crates/but/skill/e2e eval --filter-pattern "independent-branch-choice|stacked-branch-choice"
+pnpm --dir crates/but/skill/e2e eval
+pnpm --dir crates/but/skill/e2e eval:repeat
+pnpm --dir crates/but/skill/e2e view
 ```
 
 ## Fixture Setup
@@ -52,3 +55,12 @@ The script will:
 - copy `crates/but/skill/SKILL.md` and `references/` into `.agents/skills/gitbutler`
 - exclude `.agents/`, `.but-data/`, and `.tmp/` from Git status noise
 - print machine-readable repo and artifact paths
+
+## Artifacts
+
+Each scenario run writes artifacts into a temp directory reported by the provider:
+
+- `prompt.txt` - rendered scenario prompt
+- `last-message.txt` - final Codex message
+- `codex-events.jsonl` - raw Codex JSON event stream
+- `scenario.log` - fixture materialization log
