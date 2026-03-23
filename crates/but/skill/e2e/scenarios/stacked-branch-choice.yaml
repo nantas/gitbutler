@@ -1,0 +1,28 @@
+description: stacked-branch-choice
+vars:
+  fixture: one-stack
+  expected_branch_name: feature-stacked-e2e
+  expected_anchor_name: A
+  expected_commit_message: "docs: stacked e2e"
+  expected_first_command: "but status -fv"
+  expected_second_command: "but branch new feature-stacked-e2e"
+  task_prompt: |
+    You are in a GitButler-managed repository.
+    This work depends on the existing branch A, so it must be stacked on top of A.
+    Create a stacked branch named feature-stacked-e2e on top of A.
+    Create the file docs/e2e-stacked.md with exactly this content:
+    stacked e2e
+
+    Commit that file to feature-stacked-e2e with the exact commit message:
+    docs: stacked e2e
+
+    Use but for all write operations and avoid raw git write commands.
+assert:
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertNoRawGitWrites
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertCommandOrder
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertCreatedStackedBranch
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertBranchHasCommitMessage

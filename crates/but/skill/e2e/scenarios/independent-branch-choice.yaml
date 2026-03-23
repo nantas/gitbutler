@@ -1,0 +1,27 @@
+description: independent-branch-choice
+vars:
+  fixture: one-stack
+  expected_branch_name: feature-independent-e2e
+  expected_commit_message: "docs: independent e2e"
+  expected_first_command: "but status -fv"
+  expected_second_command: "but branch new feature-independent-e2e"
+  task_prompt: |
+    You are in a GitButler-managed repository.
+    This task is independent and should merge on its own.
+    Create a new parallel branch named feature-independent-e2e.
+    Create the file docs/e2e-independent.md with exactly this content:
+    independent e2e
+
+    Commit that file to feature-independent-e2e with the exact commit message:
+    docs: independent e2e
+
+    Use but for all write operations and avoid raw git write commands.
+assert:
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertNoRawGitWrites
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertCommandOrder
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertCreatedParallelBranch
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertBranchHasCommitMessage
