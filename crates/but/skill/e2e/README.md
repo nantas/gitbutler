@@ -35,3 +35,20 @@ pnpm run eval
 pnpm run eval:repeat
 pnpm run view
 ```
+
+## Fixture Setup
+
+Use the helper script to prepare a disposable repository from an existing Rust test scenario:
+
+```bash
+./setup-fixture.sh one-stack
+```
+
+The script will:
+
+- materialize the named fixture into a temp directory
+- canonicalize the repo path with `pwd -P`
+- run the installed `but setup`
+- copy `crates/but/skill/SKILL.md` and `references/` into `.agents/skills/gitbutler`
+- exclude `.agents/`, `.but-data/`, and `.tmp/` from Git status noise
+- print machine-readable repo and artifact paths
