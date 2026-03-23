@@ -1,0 +1,9 @@
+description: GitButler but skill Codex E2E harness
+prompts:
+  - file://scenarios/placeholder.txt
+providers:
+  - id: file://dist/providers/codex-integration.js
+defaultTest:
+  assert:
+    - type: javascript
+      value: file://dist/assertions/codex-assertions.js:assertPlaceholder

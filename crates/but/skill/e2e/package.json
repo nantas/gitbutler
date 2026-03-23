@@ -1,0 +1,17 @@
+{
+  "name": "@gitbutler/but-skill-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "eval": "promptfoo eval -c promptfooconfig.yaml",
+    "eval:repeat": "promptfoo eval -c promptfooconfig.yaml --repeat 3",
+    "view": "promptfoo view"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "promptfoo": "^0.119.7",
+    "typescript": "^5.9.3"
+  }
+}
