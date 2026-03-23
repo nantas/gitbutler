@@ -8,3 +8,7 @@ providers:
 tests:
   - file://scenarios/independent-branch-choice.yaml
   - file://scenarios/stacked-branch-choice.yaml
+  - file://scenarios/ambiguous-branch-type-asks-first.yaml
+  - file://scenarios/no-raw-git-writes.yaml
+  - file://scenarios/unapplied-anchor-visibility.yaml
+  - file://scenarios/pick-target-ambiguity.yaml

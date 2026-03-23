@@ -2,11 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  assertAskedAllClarificationQuestions,
   assertAskedClarificationQuestion,
+  assertAppliedAnchorBeforeStackedCreation,
   assertBranchHasCommitMessage,
   assertCommandOrder,
   assertCreatedParallelBranch,
   assertCreatedStackedBranch,
+  assertUsedStackedBranchCreation,
+  assertNoMutationCommands,
   assertNoRawGitWrites
 } from "../codex-assertions.js";
 
@@ -105,6 +109,45 @@ test("assertCreatedStackedBranch validates stacked creation", () => {
   );
 });
 
+test("assertUsedStackedBranchCreation validates stacked branch command usage", () => {
+  assert.equal(
+    assertUsedStackedBranchCreation("", {
+      vars: {
+        expected_branch_name: "feature-stacked"
+      },
+      providerResponse: {
+        metadata: {
+          trace: [{ command: "/bin/zsh -lc but branch new feature-stacked -a g0", output: "", exitCode: 0 }],
+          repoState: { stacks: [] }
+        }
+      }
+    }),
+    true
+  );
+});
+
+test("assertAppliedAnchorBeforeStackedCreation validates recovery flow", () => {
+  assert.equal(
+    assertAppliedAnchorBeforeStackedCreation("", {
+      vars: {
+        expected_branch_name: "feature-stacked",
+        expected_anchor_name: "A"
+      },
+      providerResponse: {
+        metadata: {
+          trace: [
+            { command: "/bin/zsh -lc but branch new feature-stacked -a A", output: "", exitCode: 1 },
+            { command: "/bin/zsh -lc but apply A --status-after", output: "", exitCode: 0 },
+            { command: "/bin/zsh -lc but branch new feature-stacked -a g0 --status-after", output: "", exitCode: 0 }
+          ],
+          repoState: { stacks: [] }
+        }
+      }
+    }),
+    true
+  );
+});
+
 test("assertAskedClarificationQuestion finds prompt text", () => {
   assert.equal(
     assertAskedClarificationQuestion("Does this task depend on unmerged work from main or another branch?", {
@@ -113,6 +156,31 @@ test("assertAskedClarificationQuestion finds prompt text", () => {
       }
     }),
     true
+  );
+});
+
+test("assertAskedAllClarificationQuestions validates the full question set", () => {
+  assert.equal(
+    assertAskedAllClarificationQuestions(
+      "1. Does this task depend on unmerged work from `main` or another branch?\n"
+        + "2. Are the files likely shared with another agent's ongoing task?\n"
+        + "3. Should this task merge independently, or explicitly build on top of another branch?"
+    ),
+    true
+  );
+});
+
+test("assertNoMutationCommands rejects but mutation commands", () => {
+  assert.equal(
+    assertNoMutationCommands("", {
+      providerResponse: {
+        metadata: {
+          trace: [{ command: "/bin/zsh -lc but branch new feature-1", output: "", exitCode: 0 }],
+          repoState: { stacks: [] }
+        }
+      }
+    }),
+    false
   );
 });
 

@@ -16,6 +16,11 @@ function flattenBranches(repoState: any): any[] {
   return (repoState?.stacks ?? []).flatMap((stack: any) => stack.branches ?? []);
 }
 
+function isMutationCommand(command: string): boolean {
+  return /\bbut (branch new|branch move|commit|stage|rub|amend|move|squash|absorb|pick|resolve|push|pull)\b/.test(command)
+    || /\bgit (add|commit|push|checkout|merge|rebase|stash|cherry-pick)\b/.test(command);
+}
+
 export function assertPlaceholder(): boolean {
   return true;
 }
@@ -23,6 +28,11 @@ export function assertPlaceholder(): boolean {
 export function assertNoRawGitWrites(_output: string, context: any): boolean {
   const commands = traceCommands(metadataFromContext(context).trace);
   return commands.every((command) => !/git (add|commit|push|checkout|merge|rebase|stash|cherry-pick)\b/.test(command));
+}
+
+export function assertNoMutationCommands(_output: string, context: any): boolean {
+  const commands = traceCommands(metadataFromContext(context).trace);
+  return commands.every((command) => !isMutationCommand(command));
 }
 
 export function assertCommandOrder(
@@ -43,6 +53,29 @@ export function assertCreatedParallelBranch(
 ): boolean {
   const branchName = String(context.vars?.expected_branch_name ?? "");
   return flattenBranches(metadataFromContext(context).repoState).some((branch) => branch.name === branchName);
+}
+
+export function assertUsedStackedBranchCreation(
+  _output: string,
+  context: { vars?: Record<string, unknown>; providerResponse?: { metadata?: unknown } }
+): boolean {
+  const branchName = String(context.vars?.expected_branch_name ?? "");
+  const commands = traceCommands(metadataFromContext(context).trace);
+  return commands.some((command) => command.includes(`branch new ${branchName}`) && command.includes("-a "));
+}
+
+export function assertAppliedAnchorBeforeStackedCreation(
+  _output: string,
+  context: { vars?: Record<string, unknown>; providerResponse?: { metadata?: unknown } }
+): boolean {
+  const branchName = String(context.vars?.expected_branch_name ?? "");
+  const anchorName = String(context.vars?.expected_anchor_name ?? "");
+  const commands = traceCommands(metadataFromContext(context).trace);
+  const applyIndex = commands.findIndex((command) => command.includes(`apply ${anchorName}`));
+  const stackedIndex = commands.findIndex(
+    (command, index) => index > applyIndex && command.includes(`branch new ${branchName}`) && command.includes("-a ")
+  );
+  return applyIndex >= 0 && stackedIndex > applyIndex;
 }
 
 export function assertCreatedStackedBranch(
@@ -71,6 +104,14 @@ export function assertCreatedStackedBranch(
 export function assertAskedClarificationQuestion(output: string, context: { vars?: Record<string, unknown> }): boolean {
   const question = String(context.vars?.expected_question_text ?? "");
   return output.includes(question);
+}
+
+export function assertAskedAllClarificationQuestions(output: string): boolean {
+  return [
+    "Does this task depend on unmerged work from `main` or another branch?",
+    "Are the files likely shared with another agent's ongoing task?",
+    "Should this task merge independently, or explicitly build on top of another branch?"
+  ].every((question) => output.includes(question));
 }
 
 export function assertBranchHasCommitMessage(

@@ -1,0 +1,15 @@
+description: ambiguous-branch-type-asks-first
+vars:
+  fixture: two-stacks
+  task_prompt: |
+    You are in a GitButler-managed repository with multiple existing tasks.
+    The request is intentionally ambiguous: I have not said whether the new work depends on unmerged work,
+    whether files overlap with another task, or whether it should merge independently.
+    Do not create branches, commit, or mutate the repository.
+    After checking the GitButler skill guidance, reply with exactly the three clarification questions you
+    must ask before choosing a branch type.
+assert:
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertAskedAllClarificationQuestions
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertNoMutationCommands

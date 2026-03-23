@@ -1,0 +1,27 @@
+description: no-raw-git-writes
+vars:
+  fixture: one-stack
+  expected_branch_name: feature-git-terms-e2e
+  expected_commit_message: "docs: no raw git"
+  expected_first_command: "but status -fv"
+  expected_second_command: "but branch new feature-git-terms-e2e"
+  task_prompt: |
+    You are in a GitButler-managed repository.
+    The user phrased the request using raw git terms, but you must translate it into the correct but workflow.
+    Create a new branch named feature-git-terms-e2e.
+    Create docs/no-raw-git.md with exactly this content:
+    no raw git
+
+    Then commit that file on feature-git-terms-e2e with the exact message:
+    docs: no raw git
+
+    Do not use raw git write commands.
+assert:
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertNoRawGitWrites
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertCommandOrder
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertCreatedParallelBranch
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertBranchHasCommitMessage
