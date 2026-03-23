@@ -295,13 +295,13 @@ Tier 3 remains useful for cheap, deterministic diagnostics, but this project gat
 
 ### Tier 4: Integration (High-cost, realistic)
 
-Run Claude Code against a real test repository with the latest `but` binary and skill files. Unlike Tier 3's mocks, this tests the full stack: skill file → agent behavior → actual CLI execution → real repo state changes.
+Run a real coding agent against a disposable repository with the latest installed release `but` CLI and the real skill files. Unlike Tier 3's mocks, this tests the full stack: installed skill file → agent behavior → actual CLI execution → real repo state changes.
 
 **What makes this different from Tier 3:**
 
 | | Tier 3 (mock) | Tier 4 (integration) |
 |---|---|---|
-| Runs `but` binary | No | Yes — freshly built from source |
+| Runs `but` binary | No | Yes — installed release CLI by default |
 | Real git repo | No | Yes — disposable fixture |
 | Command trace | From mock loop | From SDK hooks or output parsing |
 | Asserts on repo state | No | Yes — `but status --json` after |
@@ -311,16 +311,23 @@ Run Claude Code against a real test repository with the latest `but` binary and 
 
 #### Current Harness Implementation
 
-The current Tier 4 harness lives in `crates/but/skill/eval/` and uses:
-- `providers/but-integration.ts` for real Agent SDK execution with Bash hook traces
+The current Tier 4 harness should live in `crates/but/skill/e2e/` and use:
+- `providers/codex-integration.ts` for real Codex execution with command traces
 - `promptfooconfig.yaml` for scenario data
-- `assertions/but-assertions.ts` for shared assertion functions (`file://...:functionName`)
-- `setup-fixture.sh` for disposable repo setup and skill installation
+- `assertions/codex-assertions.ts` for shared assertion functions
+- `setup-fixture.sh` for disposable repo setup and skill installation into `.agents/skills/gitbutler`
+
+The first supported matrix is:
+- agent runtime: Codex
+- CLI baseline: latest installed release `but`
+- skill location inside fixture: `.agents/skills/gitbutler`
+
+Additional matrices, such as Claude or a locally-built `but`, are follow-up work rather than the starting point.
 
 #### How to Run
 
 ```bash
-cd crates/but/skill/eval
+cd crates/but/skill/e2e
 
 # One run (PR smoke)
 pnpm run eval
@@ -361,8 +368,8 @@ Running the real Tier 4 harness surfaced a few practical issues that are not obv
    - Fix: normalize fixture path with `pwd -P` in `setup-fixture.sh`.
 
 4. **Keep fixture support files out of Git status.**
-   - `.but-data/` and installed `.claude/skills/` content polluted `but status --json` and changed CLI IDs.
-   - Fix: add `.but-data/`, `.claude/`, `.tmp/` to `.git/info/exclude` in each fixture.
+   - `.but-data/` and installed skill content polluted `but status --json` and changed CLI IDs.
+   - Fix: add `.but-data/`, `.agents/`, `.tmp/` to `.git/info/exclude` in each fixture.
 
 5. **Fixture cleanup should be best-effort.**
    - Rare `ENOTEMPTY` races during directory deletion can fail otherwise-successful evals.
