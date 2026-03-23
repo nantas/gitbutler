@@ -14,6 +14,8 @@ mod cursor;
 #[cfg(feature = "legacy")]
 mod diff;
 mod format;
+#[cfg(feature = "legacy")]
+mod guardrail_workflow;
 mod gui;
 mod help;
 #[cfg(feature = "legacy")]

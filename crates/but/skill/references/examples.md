@@ -4,6 +4,36 @@ Real-world examples of common workflows.
 
 **Note on CLI IDs:** Examples below use illustrative IDs like `bu`, `c3`, `a1` to keep commands readable. In practice, **always read actual IDs from `but status -fv`** — they are generated per-session and will differ from these examples. Branch IDs are derived from unique substrings of the branch name (e.g., `fe` from `feature-x`), commit IDs use short hex prefixes (e.g., `1b`, `8f`), and file/hunk/stack IDs are auto-generated (e.g., `g0`, `h0`). All IDs are unique across entity types.
 
+## Example 0: Complex Repository Branch-Type Decision (Ask First)
+
+**Scenario:** Multi-agent repository with unclear dependencies and possible file overlap.
+
+```bash
+# 1. Collect state first
+but status -fv
+but branch list --json
+```
+
+If dependency or ownership is unclear, ask the user before creating branches:
+
+1. Does this task depend on unmerged work from `main` or another branch?
+2. Are modified files shared with another agent's ongoing task?
+3. Should this task merge independently, or build on a specific branch?
+
+Then choose branch type:
+
+- Independent: `but branch new <name>`
+- Dependent: `but branch new <name> -a <anchor>`
+- Existing branches need dependency relation: `but branch move <child-name> <parent-name>`
+
+Before mutation in high-risk repos, run marker scan:
+
+```bash
+rg -n -e '^(<<<<<<<|=======|>>>>>>>|\|\|\|\|\|\|\|)' <paths>
+```
+
+If markers are found, resolve first, then continue.
+
 ## Example 1: Starting Independent Parallel Work
 
 **Scenario:** Need to work on two independent features: a new API endpoint and UI styling updates.

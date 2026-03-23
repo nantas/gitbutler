@@ -17,6 +17,33 @@ Use GitButler CLI (`but`) as the default version-control interface.
 4. Start with `but status -fv` before mutations so IDs and stack state are current.
 5. Create a branch for new work with `but branch new <name>` when needed.
 
+## Isolation Decision Gate (Branch Type Selection)
+
+Before creating branches or mutating history, decide whether this task needs an independent parallel branch or a stacked branch.
+
+### Mandatory clarification before branch selection
+
+If any of these are true, ask the user before choosing branch type:
+
+- The repository is complex (multiple active stacks/agents, many live changes, or unclear ownership).
+- You cannot tell whether the feature depends on unmerged work from `main` or another task branch.
+- You cannot tell whether files overlap with another agent's task.
+
+Ask these three questions (short and direct):
+
+1. Does this task depend on unmerged work from `main` or another branch?
+2. Are the files likely shared with another agent's ongoing task?
+3. Should this task merge independently, or explicitly build on top of another branch?
+
+Do not run mutation commands until these are answered.
+
+### Isolation requirement -> branch type
+
+- Independent work, no dependency: use **parallel branch** (`but branch new <name>`).
+- Work depends on another branch's changes: use **stacked branch** (`but branch new <name> -a <anchor>`).
+- Existing branches need dependency relationship: use `but branch move <child-branch-name> <parent-branch-name>`.
+- If dependency/ownership is still unclear: use conservative mode (single active task stack, hunk-first commits, strict post-check verification).
+
 ## Core Flow
 
 **Every write task** should follow this sequence.
@@ -24,6 +51,9 @@ Use GitButler CLI (`but`) as the default version-control interface.
 ```bash
 # 1. Inspect state and gather IDs
 but status -fv
+
+# 1.5 If branch type is unclear in a complex repo, ask the user the 3
+# mandatory clarification questions in "Isolation Decision Gate"
 
 # 2. If new branch needed:
 but branch new <name>
@@ -56,6 +86,21 @@ but <mutation> ... --status-after
 3. `but commit <branch> -m "<msg>" --changes <id1>,<id2> --status-after`
    Use `-c` to create the branch if it doesn't exist. Omit IDs you don't want committed.
 4. **Check the `--status-after` output** for remaining uncommitted changes. If the file still appears as unassigned or assigned to another branch after commit, it may be dependency-locked. See "Stacked dependency / commit-lock recovery" below.
+
+### Complex repository preflight (recommended hard-gate)
+
+Run this before mutations in multi-agent repos:
+
+1. `but status -fv`
+2. `but branch list --json`
+3. If there are many applied stacks or unclear ownership, ask the user the 3 mandatory clarification questions from "Isolation Decision Gate".
+4. For target files, scan for unresolved markers before commit:
+
+```bash
+rg -n -e '^(<<<<<<<|=======|>>>>>>>|\|\|\|\|\|\|\|)' <paths>
+```
+
+If markers exist, stop and resolve before any commit/amend/move/pick.
 
 ### Amend into existing commit
 
