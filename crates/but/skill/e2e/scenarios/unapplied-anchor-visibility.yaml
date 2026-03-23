@@ -1,0 +1,26 @@
+description: unapplied-anchor-visibility
+vars:
+  fixture: one-stack
+  expected_branch_name: feature-anchor-visible-e2e
+  expected_anchor_name: A
+  expected_commit_message: "docs: anchor visible"
+  task_prompt: |
+    You are in a GitButler-managed repository.
+    The dependency branch A exists but is not yet visible in the workspace.
+    Create a stacked branch named feature-anchor-visible-e2e on top of A.
+    Create docs/anchor-visible.md containing exactly this content:
+    anchor visible
+
+    Commit that file to feature-anchor-visible-e2e with the exact message:
+    docs: anchor visible
+
+    Use but only.
+assert:
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertNoRawGitWrites
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertAppliedAnchorBeforeStackedCreation
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertUsedStackedBranchCreation
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertBranchHasCommitMessage

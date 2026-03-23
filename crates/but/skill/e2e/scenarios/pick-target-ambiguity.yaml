@@ -1,0 +1,15 @@
+description: pick-target-ambiguity
+vars:
+  fixture: pick-from-unapplied
+  expected_question_text: "Which target branch should receive the picked commit"
+  task_prompt: |
+    You are in a GitButler-managed repository.
+    There is an unapplied branch with commits available to pick, but the target branch is unspecified.
+    Do not mutate the repository.
+    After checking the available branch state, reply with exactly one clarification question asking
+    which target branch should receive the picked commit.
+assert:
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertAskedClarificationQuestion
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertNoMutationCommands
