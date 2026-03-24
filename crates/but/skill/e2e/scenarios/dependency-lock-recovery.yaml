@@ -1,0 +1,28 @@
+description: dependency-lock-recovery
+vars:
+  fixture: dependency-lock-recovery
+  expected_branch_name: feature-recovery
+  expected_dependency_branch_name: dependency-base
+  expected_commit_message: "commit after stacking"
+  task_prompt: |
+    You are in a GitButler-managed repository.
+    The file docs/shared.txt belongs to the dependency branch dependency-base.
+    Use but only.
+
+    1. Make dependency-base visible in the workspace if needed.
+    2. Create an independent branch named feature-recovery.
+    3. Edit docs/shared.txt so its full contents become:
+       owned by dependency base
+       new line
+    4. Commit docs/shared.txt on feature-recovery with the exact message:
+       attempt before stacking
+    5. If the file remains unassigned or locked after that commit, recover by stacking feature-recovery on top of dependency-base with `but branch move`.
+    6. Commit docs/shared.txt again on feature-recovery with the exact message:
+       commit after stacking
+assert:
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertNoRawGitWrites
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertDependencyLockRecoveryFlow
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertBranchHasCommitMessage

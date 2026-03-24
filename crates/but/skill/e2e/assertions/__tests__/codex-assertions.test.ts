@@ -9,6 +9,8 @@ import {
   assertCommandOrder,
   assertCreatedParallelBranch,
   assertCreatedStackedBranch,
+  assertDependencyLockRecoveryFlow,
+  assertRanConflictMarkerScan,
   assertUsedStackedBranchCreation,
   assertNoMutationCommands,
   assertNoRawGitWrites
@@ -192,6 +194,60 @@ test("assertBranchHasCommitMessage validates commit placement", () => {
         expected_commit_message: "msg"
       },
       providerResponse
+    }),
+    true
+  );
+});
+
+test("assertRanConflictMarkerScan validates unresolved marker scan", () => {
+  assert.equal(
+    assertRanConflictMarkerScan("", {
+      providerResponse: {
+        metadata: {
+          trace: [
+            {
+              command: "/bin/zsh -lc rg -n -e '^(<<<<<<<|=======|>>>>>>>|\\\\|\\\\|\\\\|\\\\|\\\\|\\\\|\\\\|)' docs/conflicted-notes.md",
+              output: "1:<<<<<<< ours",
+              exitCode: 0
+            }
+          ],
+          repoState: { stacks: [] }
+        }
+      }
+    }),
+    true
+  );
+});
+
+test("assertDependencyLockRecoveryFlow validates branch move recovery after a locked commit", () => {
+  assert.equal(
+    assertDependencyLockRecoveryFlow("", {
+      vars: {
+        expected_branch_name: "feature-recovery",
+        expected_dependency_branch_name: "dependency-base"
+      },
+      providerResponse: {
+        metadata: {
+          trace: [
+            {
+              command: "/bin/zsh -lc but commit feature-recovery -m 'attempt before stacking' --changes uz --status-after",
+              output: "Warning: Some selected changes could not be committed.\nattempt before stacking (no changes)",
+              exitCode: 0
+            },
+            {
+              command: "/bin/zsh -lc but branch move feature-recovery dependency-base --status-after",
+              output: "Moved branch 'feature-recovery' on top of 'dependency-base'.",
+              exitCode: 0
+            },
+            {
+              command: "/bin/zsh -lc but commit feature-recovery -m 'commit after stacking' --changes uz --status-after",
+              output: "Created commit 123 on branch feature-recovery",
+              exitCode: 0
+            }
+          ],
+          repoState: { stacks: [] }
+        }
+      }
     }),
     true
   );

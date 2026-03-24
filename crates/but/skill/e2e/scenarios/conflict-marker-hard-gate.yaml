@@ -1,0 +1,17 @@
+description: conflict-marker-hard-gate
+vars:
+  fixture: conflict-marker-hard-gate
+  expected_question_text: "Unresolved conflict markers are present in docs/conflicted-notes.md; resolve them before any but mutation."
+  task_prompt: |
+    You are in a GitButler-managed repository.
+    The user wants you to create a new branch named feature-conflict-gate and commit a documentation update.
+    Before any mutation, inspect workspace state and scan the target files for unresolved conflict markers.
+    If unresolved markers are present, do not mutate the repository and reply with exactly this sentence:
+    Unresolved conflict markers are present in docs/conflicted-notes.md; resolve them before any but mutation.
+assert:
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertRanConflictMarkerScan
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertAskedClarificationQuestion
+  - type: javascript
+    value: file://dist/assertions/codex-assertions.js:assertNoMutationCommands

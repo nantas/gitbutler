@@ -8,15 +8,23 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 repo_root="$(cd "${script_dir}/../../../.." && pwd -P)"
 scenario_dir="${repo_root}/crates/but/tests/fixtures/scenario"
 scenario_script="${scenario_dir}/${scenario_name}.sh"
+post_setup_script="${scenario_dir}/${scenario_name}.post-setup.sh"
 shared_script="${scenario_dir}/shared.sh"
 skill_source_dir="${repo_root}/crates/but/skill"
+default_but_bin="${HOME}/.local/bin/but"
 
 if [[ ! -f "${scenario_script}" ]]; then
   echo "Unknown scenario: ${scenario_name}" >&2
   exit 1
 fi
 
-if ! command -v but >/dev/null 2>&1; then
+if [[ -n "${BUT_BIN:-}" ]]; then
+  but_bin="${BUT_BIN}"
+elif [[ -x "${default_but_bin}" ]]; then
+  but_bin="${default_but_bin}"
+elif command -v but >/dev/null 2>&1; then
+  but_bin="$(command -v but)"
+else
   echo "'but' must be installed and available on PATH" >&2
   exit 1
 fi
@@ -33,6 +41,8 @@ cp "${shared_script}" "${repo_dir}/shared.sh"
   cd "${repo_dir}"
   GIT_TEST_DEFAULT_INITIAL_BRANCH_NAME=main bash ./scenario.sh
 ) >"${artifact_dir}/scenario.log" 2>&1
+
+rm -f "${repo_dir}/scenario.sh" "${repo_dir}/shared.sh"
 
 repo_dir="$(cd "${repo_dir}" && pwd -P)"
 artifact_dir="$(cd "${artifact_dir}" && pwd -P)"
@@ -52,8 +62,13 @@ cp -R "${skill_source_dir}/references" "${skill_install_dir}/references"
 
 (
   cd "${repo_dir}"
-  but setup >/dev/null
+  PATH="$(dirname "${but_bin}"):${PATH}" "${but_bin}" setup >/dev/null
 )
+
+if [[ -f "${post_setup_script}" ]]; then
+  PATH="$(dirname "${but_bin}"):${PATH}" bash "${post_setup_script}" "${repo_dir}" "${artifact_dir}" \
+    >>"${artifact_dir}/scenario.log" 2>&1
+fi
 
 cat <<EOF
 {

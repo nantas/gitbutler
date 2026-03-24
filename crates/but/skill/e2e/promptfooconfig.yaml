@@ -12,3 +12,5 @@ tests:
   - file://scenarios/no-raw-git-writes.yaml
   - file://scenarios/unapplied-anchor-visibility.yaml
   - file://scenarios/pick-target-ambiguity.yaml
+  - file://scenarios/conflict-marker-hard-gate.yaml
+  - file://scenarios/dependency-lock-recovery.yaml

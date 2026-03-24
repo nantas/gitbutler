@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +9,25 @@ import type { ApiProvider, CallApiContextParams, CallApiOptionsParams, ProviderO
 import type { CodexCommandTrace, CodexJsonEvent, CodexProviderMetadata, FixtureSetupResult } from "../types.js";
 
 const defaultBasePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const preferredButPath = path.join(homedir(), ".local", "bin", "but");
+
+function resolveButBinary(config: Record<string, unknown>): string {
+  const configured = typeof config.butBin === "string" ? config.butBin.trim() : "";
+  if (configured) {
+    return configured;
+  }
+
+  return preferredButPath;
+}
+
+function buildCommandEnv(butBinary: string): NodeJS.ProcessEnv {
+  const butDir = path.dirname(butBinary);
+  return {
+    ...process.env,
+    BUT_BIN: butBinary,
+    PATH: `${butDir}${path.delimiter}${process.env.PATH ?? ""}`
+  };
+}
 
 function parseFixtureSetup(raw: string): FixtureSetupResult {
   return JSON.parse(raw) as FixtureSetupResult;
@@ -46,19 +66,21 @@ export function parseCodexJsonl(stdout: string): { lastMessage: string; trace: C
   return { lastMessage, trace };
 }
 
-function runFixtureSetup(basePath: string, fixtureName: string): FixtureSetupResult {
+function runFixtureSetup(basePath: string, fixtureName: string, env: NodeJS.ProcessEnv): FixtureSetupResult {
   const scriptPath = path.join(basePath, "setup-fixture.sh");
   const raw = execFileSync(scriptPath, [fixtureName], {
     cwd: basePath,
-    encoding: "utf8"
+    encoding: "utf8",
+    env
   });
   return parseFixtureSetup(raw);
 }
 
-function runButStatus(repoPath: string): unknown {
-  const result = spawnSync("but", ["--json", "status"], {
+function runButStatus(repoPath: string, butBinary: string, env: NodeJS.ProcessEnv): unknown {
+  const result = spawnSync(butBinary, ["--json", "status"], {
     cwd: repoPath,
-    encoding: "utf8"
+    encoding: "utf8",
+    env
   });
 
   if (result.status !== 0) {
@@ -110,7 +132,9 @@ export default class CodexIntegrationProvider implements ApiProvider {
     const basePath = configuredBasePath
       ? path.resolve(path.isAbsolute(configuredBasePath) ? configuredBasePath : path.join(defaultBasePath, configuredBasePath))
       : defaultBasePath;
-    const fixture = runFixtureSetup(basePath, fixtureName);
+    const butBinary = resolveButBinary(this.config);
+    const commandEnv = buildCommandEnv(butBinary);
+    const fixture = runFixtureSetup(basePath, fixtureName, commandEnv);
     const artifactPath = fixture.artifactPath;
     mkdirSync(artifactPath, { recursive: true });
 
@@ -128,7 +152,8 @@ export default class CodexIntegrationProvider implements ApiProvider {
 
     const codexResult = spawnSync("codex", codexArgs, {
       cwd: fixture.repoPath,
-      encoding: "utf8"
+      encoding: "utf8",
+      env: commandEnv
     });
 
     writeFileSync(eventLogPath, codexResult.stdout ?? "");
@@ -149,7 +174,7 @@ export default class CodexIntegrationProvider implements ApiProvider {
     }
 
     const parsed = parseCodexJsonl(codexResult.stdout ?? "");
-    const repoState = runButStatus(fixture.repoPath);
+    const repoState = runButStatus(fixture.repoPath, butBinary, commandEnv);
     const lastMessage = readFileSync(transcriptPath, "utf8").trim() || parsed.lastMessage;
     const metadata: CodexProviderMetadata = {
       repoPath: fixture.repoPath,

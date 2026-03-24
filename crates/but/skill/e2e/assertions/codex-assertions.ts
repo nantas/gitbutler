@@ -12,6 +12,10 @@ function traceCommands(trace: CodexCommandTrace[]): string[] {
   return trace.map((item) => item.command);
 }
 
+function traceOutputs(trace: CodexCommandTrace[]): string[] {
+  return trace.map((item) => item.output);
+}
+
 function flattenBranches(repoState: any): any[] {
   return (repoState?.stacks ?? []).flatMap((stack: any) => stack.branches ?? []);
 }
@@ -124,4 +128,42 @@ export function assertBranchHasCommitMessage(
     .filter((branch) => branch.name === branchName)
     .flatMap((branch) => branch.commits ?? [])
     .some((commit) => String(commit.message ?? "").includes(commitMessage));
+}
+
+export function assertRanConflictMarkerScan(_output: string, context: any): boolean {
+  const commands = traceCommands(metadataFromContext(context).trace);
+  return commands.some((command) =>
+    command.includes("rg -n")
+      && (command.includes("<<<<<<<") || command.includes("=======") || command.includes(">>>>>>>"))
+  );
+}
+
+export function assertDependencyLockRecoveryFlow(
+  _output: string,
+  context: { vars?: Record<string, unknown>; providerResponse?: { metadata?: unknown } }
+): boolean {
+  const branchName = String(context.vars?.expected_branch_name ?? "");
+  const dependencyBranchName = String(context.vars?.expected_dependency_branch_name ?? "");
+  const metadata = metadataFromContext(context);
+  const commands = traceCommands(metadata.trace);
+  const outputs = traceOutputs(metadata.trace);
+
+  const firstCommitIndex = commands.findIndex((command) =>
+    command.includes(`but commit ${branchName}`) && command.includes("attempt before stacking")
+  );
+  const branchMoveIndex = commands.findIndex((command) =>
+    command.includes(`but branch move ${branchName} ${dependencyBranchName}`)
+  );
+  const secondCommitIndex = commands.findIndex(
+    (command, index) => index > branchMoveIndex && command.includes(`but commit ${branchName}`) && command.includes("commit after stacking")
+  );
+
+  const sawLockWarning = outputs.some((output) => output.includes("Some selected changes could not be committed."));
+  const sawNoChangesCommit = outputs.some((output) => output.includes("attempt before stacking (no changes)"));
+
+  return firstCommitIndex >= 0
+    && branchMoveIndex > firstCommitIndex
+    && secondCommitIndex > branchMoveIndex
+    && sawLockWarning
+    && sawNoChangesCommit;
 }
