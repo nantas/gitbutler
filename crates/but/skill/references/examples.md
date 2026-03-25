@@ -532,6 +532,60 @@ but status -fv
 but discard a1
 ```
 
+## Example 13: Converging Multi-Agent Virtual Branches to Team-Friendly Git PRs
+
+**Scenario:** Multiple agents produced multiple virtual branches. Team members outside GitButler should review and merge via normal Git branches and normal PRs.
+
+### Option A: Keep Separate PRs (recommended for reviewability)
+
+```bash
+# 1. Inspect stacks and branch IDs
+but status -fv
+
+# 2. Ensure each agent branch has clean commits
+but show <branch-id>
+
+# 3. Push each branch (creates/updates normal remote branches)
+but push <branch-a-id>
+but push <branch-b-id>
+but push <branch-c-id>
+
+# 4. Create one PR per branch
+but pr new <branch-a-id>
+but pr new <branch-b-id>
+but pr new <branch-c-id>
+```
+
+Result: teammates using plain Git see standard `origin/<branch-name>` branches and standard PRs.
+
+### Option B: Collapse to One Delivery Branch (single PR handoff)
+
+```bash
+# 1. Inspect current branch graph
+but status -fv
+
+# 2. Move/squash commits so one branch contains final deliverable
+but move <commit-id> <target-commit-or-branch-id> --status-after
+but squash <branch-id> --status-after
+
+# 3. Push only final delivery branch
+but push <final-branch-id>
+
+# 4. Open one PR
+but pr new <final-branch-id>
+```
+
+Result: one conventional Git branch and one conventional PR for the whole feature.
+
+### Optional: Exit back to plain Git workflow
+
+```bash
+# Run this while on a gitbutler/* branch (typically gitbutler/workspace)
+but teardown
+git rev-parse --abbrev-ref HEAD
+git status
+```
+
 ## Tips and Tricks
 
 ### Quick Status Check

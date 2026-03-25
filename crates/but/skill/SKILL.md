@@ -138,6 +138,24 @@ but branch delete temp-unstack           # delete the dummy, leaving branch inde
 
 **Note:** `but branch move` uses branch **names** (like `feature/frontend`), while `but move` uses commit **IDs** (like `c3`). Do not confuse them. Do NOT use `but undo` to unstack — it may revert more than intended and lose commits.
 
+### Push semantics (virtual branch -> remote git branch)
+
+`but push` accepts a branch CLI ID or branch name from the GitButler workspace model.
+
+- In default (non-Gerrit) mode, it pushes to a normal Git branch (`refs/heads/<name>`).
+- In Gerrit mode, it can push for review via Gerrit refs (`refs/for/<target>`).
+
+- If the remote branch doesn't exist yet, `but push` creates it.
+- `but push` does **not** publish `gitbutler/workspace`.
+- For certainty, run `but push --dry-run` first to inspect the exact `remote/branch` destination.
+
+Recommended verification after push:
+
+```bash
+but push <branch-id>
+git ls-remote --heads origin "<branch-name>"
+```
+
 ### Stacked dependency / commit-lock recovery
 
 A **dependency lock** occurs when a file was originally committed on branch A, but you're trying to commit changes to it on branch B. Symptoms:
@@ -168,6 +186,37 @@ If `but move` causes conflicts (conflicted commits in status):
 
 **Common mistakes:** Do NOT use `but amend` on conflicted commits (it won't work). Do NOT skip step 4 — you must actually edit the files to remove conflict markers before finishing.
 
+### Exit GitButler mode safely (back to native Git workflow)
+
+When a user asks to return to plain Git flow:
+
+1. Ensure you are on a `gitbutler/*` branch first (typically `gitbutler/workspace`).
+2. Run `but teardown`.
+3. Verify active branch and working tree:
+   - `git rev-parse --abbrev-ref HEAD`
+   - `git status`
+
+Important behavior:
+
+- `but teardown` can fail if not on a `gitbutler/*` branch.
+- It may keep unresolved or dangling changes in the working directory for user safety.
+- After teardown, collaboration should proceed on normal Git branches and normal PRs.
+
+### Multi-agent convergence to standard Git delivery
+
+If multiple agents produced multiple virtual branches, finish in one of these team-friendly modes:
+
+1. Multi-PR mode (recommended for reviewability):
+   - keep each branch independent/stacked as needed
+   - `but push <branch>` for each
+   - open one PR per branch
+2. Single-PR mode (recommended for one feature handoff):
+   - consolidate branch history (`but move`, `but squash`, optional `but merge`)
+   - keep one final branch as the delivery branch
+   - `but push <final-branch>` and open one PR
+
+In both modes, never use `gitbutler/workspace` as the shared collaboration branch.
+
 ## Git-to-But Map
 
 | git | but |
@@ -188,6 +237,7 @@ If `but move` causes conflicts (conflicted commits in status):
 - After a successful `--status-after`, don't run a redundant `but status -fv` unless you need new IDs.
 - Use `but show <branch-id>` to see commit details for a branch, including per-commit file changes and line counts.
 - **Per-commit file counts**: `but status` does NOT include per-commit file counts. Use `but show <branch-id>` or `git show --stat <commit-hash>` to get them.
+- `but push <branch>` resolves virtual-branch identity to a remote destination (`refs/heads/*` by default, `refs/for/*` in Gerrit mode); it does not publish `gitbutler/workspace`.
 - Avoid `--help` probes; use this skill and `references/reference.md` first. Only use `--help` after a failed attempt.
 - Run `but skill check` only when command behavior diverges from this skill, not as routine preflight.
 - For command syntax and flags: `references/reference.md`

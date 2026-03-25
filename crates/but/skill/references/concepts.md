@@ -41,6 +41,20 @@ workspace (gitbutler/workspace)
    - Unapplied branches: Exist but not active
    - Use `but apply`/`but unapply` to control
 
+### Virtual Branches vs Normal Git Branches
+
+GitButler "virtual branches" are a workspace management model. Team collaboration still happens through normal Git branches on remote.
+
+- In workspace: you operate with CLI IDs, apply/unapply, and stack relationships.
+- On remote (default mode): pushes and PRs are standard branches (`refs/heads/<branch-name>`), consumable by any plain Git client.
+- On remote (Gerrit mode): pushes can target Gerrit review refs (`refs/for/<target>`).
+
+Practical consequence:
+
+- `but push <branch-id>` maps a workspace branch to a remote destination and pushes it.
+- It may create that remote branch if missing.
+- `gitbutler/workspace` is not the branch you share with teammates.
+
 ## CLI IDs: Short Identifiers
 
 Every object gets a short, human-readable CLI ID shown in `but status`. IDs are generated per-session and are unique across all entity types (no two objects share an ID) — always read them from `but status`.

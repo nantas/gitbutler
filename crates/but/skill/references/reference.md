@@ -411,6 +411,15 @@ but push -s                   # Skip force push protection checks
 but push -r                   # Run pre-push hooks
 ```
 
+**Branch identity model:**
+
+- Input (`<branch-id>`) can be a GitButler branch CLI ID or branch name.
+- Output on remote is `refs/heads/<name>` in default mode, and may be Gerrit review refs (`refs/for/<target>`) in Gerrit mode.
+- If the remote branch does not exist, push creates it.
+- `gitbutler/workspace` is local coordination state and should not be used as the collaboration branch.
+
+Use `but push --dry-run` to inspect the exact remote destination before pushing.
+
 ### `but pull`
 
 Update all branches with target branch changes.
@@ -524,6 +533,20 @@ Exit GitButler mode and return to normal git workflow.
 
 ```bash
 but teardown
+```
+
+**Preconditions and behavior:**
+
+- Run from a `gitbutler/*` branch (typically `gitbutler/workspace`).
+- If you are on a normal branch, switch back first, then run teardown.
+- Teardown exits GitButler mode by checking out a normal branch and uninstalling managed hooks.
+- If workspace anomalies exist (for example non-GitButler commits on workspace), teardown may keep changes in the working directory to avoid data loss.
+
+Recommended verification:
+
+```bash
+git rev-parse --abbrev-ref HEAD
+git status
 ```
 
 ### `but config`
