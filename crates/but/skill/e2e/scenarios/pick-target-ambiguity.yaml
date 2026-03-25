@@ -10,6 +10,6 @@ vars:
     which target branch should receive the picked commit.
 assert:
   - type: javascript
-    value: file://dist/assertions/codex-assertions.js:assertAskedClarificationQuestion
+    value: file://dist/assertions/codex-assertions.js:assertAskedPickTargetClarification
   - type: javascript
     value: file://dist/assertions/codex-assertions.js:assertNoMutationCommands

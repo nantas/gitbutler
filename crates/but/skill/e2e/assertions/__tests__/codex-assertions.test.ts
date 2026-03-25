@@ -10,6 +10,7 @@ import {
   assertCreatedParallelBranch,
   assertCreatedStackedBranch,
   assertDependencyLockRecoveryFlow,
+  assertAskedPickTargetClarification,
   assertRanConflictMarkerScan,
   assertUsedStackedBranchCreation,
   assertNoMutationCommands,
@@ -249,6 +250,20 @@ test("assertDependencyLockRecoveryFlow validates branch move recovery after a lo
         }
       }
     }),
+    true
+  );
+});
+
+test("assertAskedPickTargetClarification accepts direct pick-target questions", () => {
+  assert.equal(
+    assertAskedPickTargetClarification("Which target branch should receive the picked commit from `unapplied-branch`?"),
+    true
+  );
+});
+
+test("assertAskedPickTargetClarification accepts reordered pick phrasing", () => {
+  assert.equal(
+    assertAskedPickTargetClarification("Which target branch should receive the commit picked from `unapplied-branch`?"),
     true
   );
 });

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { parseCodexJsonl } from "../codex-integration.js";
+import { defaultCodexTimeoutMs, parseCodexJsonl, readLastMessage, resolveCodexTimeoutMs } from "../codex-integration.js";
 
 test("parseCodexJsonl extracts command traces and last message", () => {
   const jsonl = [
@@ -41,4 +41,16 @@ test("parseCodexJsonl extracts command traces and last message", () => {
       exitCode: 0
     }
   ]);
+});
+
+test("resolveCodexTimeoutMs returns the default timeout when not configured", () => {
+  assert.equal(resolveCodexTimeoutMs({}), defaultCodexTimeoutMs);
+});
+
+test("resolveCodexTimeoutMs accepts an explicit timeout override", () => {
+  assert.equal(resolveCodexTimeoutMs({ codexTimeoutMs: 123456 }), 123456);
+});
+
+test("readLastMessage falls back to the parsed agent message when the transcript file is missing", () => {
+  assert.equal(readLastMessage("/tmp/does-not-exist", "fallback message"), "fallback message");
 });

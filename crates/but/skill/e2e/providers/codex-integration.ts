@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +10,8 @@ import type { CodexCommandTrace, CodexJsonEvent, CodexProviderMetadata, FixtureS
 
 const defaultBasePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const preferredButPath = path.join(homedir(), ".local", "bin", "but");
+export const defaultCodexTimeoutMs = 360000;
+const defaultCodexMaxAttempts = 2;
 
 function resolveButBinary(config: Record<string, unknown>): string {
   const configured = typeof config.butBin === "string" ? config.butBin.trim() : "";
@@ -18,6 +20,28 @@ function resolveButBinary(config: Record<string, unknown>): string {
   }
 
   return preferredButPath;
+}
+
+export function resolveCodexTimeoutMs(config: Record<string, unknown>): number {
+  const configured = config.codexTimeoutMs;
+  return typeof configured === "number" && Number.isFinite(configured) && configured > 0
+    ? configured
+    : defaultCodexTimeoutMs;
+}
+
+function resolveCodexMaxAttempts(config: Record<string, unknown>): number {
+  const configured = config.codexMaxAttempts;
+  return typeof configured === "number" && Number.isFinite(configured) && configured >= 1
+    ? Math.floor(configured)
+    : defaultCodexMaxAttempts;
+}
+
+export function readLastMessage(transcriptPath: string, parsedLastMessage: string): string {
+  if (existsSync(transcriptPath)) {
+    return readFileSync(transcriptPath, "utf8").trim() || parsedLastMessage.trim();
+  }
+
+  return parsedLastMessage.trim();
 }
 
 function buildCommandEnv(butBinary: string): NodeJS.ProcessEnv {
@@ -133,6 +157,8 @@ export default class CodexIntegrationProvider implements ApiProvider {
       ? path.resolve(path.isAbsolute(configuredBasePath) ? configuredBasePath : path.join(defaultBasePath, configuredBasePath))
       : defaultBasePath;
     const butBinary = resolveButBinary(this.config);
+    const codexTimeoutMs = resolveCodexTimeoutMs(this.config);
+    const codexMaxAttempts = resolveCodexMaxAttempts(this.config);
     const commandEnv = buildCommandEnv(butBinary);
     const fixture = runFixtureSetup(basePath, fixtureName, commandEnv);
     const artifactPath = fixture.artifactPath;
@@ -150,32 +176,78 @@ export default class CodexIntegrationProvider implements ApiProvider {
       typeof this.config.model === "string" ? this.config.model : undefined
     );
 
-    const codexResult = spawnSync("codex", codexArgs, {
-      cwd: fixture.repoPath,
-      encoding: "utf8",
-      env: commandEnv
-    });
+    let parsed = { lastMessage: "", trace: [] as CodexCommandTrace[] };
+    let lastMessage = "";
+    let lastStdout = "";
 
-    writeFileSync(eventLogPath, codexResult.stdout ?? "");
+    for (let attempt = 1; attempt <= codexMaxAttempts; attempt += 1) {
+      const codexResult = spawnSync("codex", codexArgs, {
+        cwd: fixture.repoPath,
+        encoding: "utf8",
+        env: commandEnv,
+        timeout: codexTimeoutMs
+      });
 
-    if (codexResult.status !== 0) {
-      return {
-        error: codexResult.stderr || `codex exited with status ${codexResult.status}`,
-        output: "",
-        metadata: {
-          repoPath: fixture.repoPath,
-          artifactPath,
-          skillPath: fixture.skillPath,
-          transcriptPath,
-          eventLogPath,
-          scenarioLogPath
+      writeFileSync(eventLogPath, codexResult.stdout ?? "");
+      lastStdout = codexResult.stdout ?? "";
+      parsed = parseCodexJsonl(codexResult.stdout ?? "");
+      lastMessage = readLastMessage(transcriptPath, parsed.lastMessage);
+
+      if (codexResult.error?.name === "Error" && "code" in codexResult.error && codexResult.error.code === "ETIMEDOUT") {
+        if (attempt < codexMaxAttempts) {
+          continue;
         }
-      };
+
+        return {
+          error: `codex timed out after ${codexTimeoutMs}ms`,
+          output: "",
+          metadata: {
+            repoPath: fixture.repoPath,
+            artifactPath,
+            skillPath: fixture.skillPath,
+            transcriptPath,
+            eventLogPath,
+            scenarioLogPath
+          }
+        };
+      }
+
+      if (codexResult.status !== 0) {
+        return {
+          error: codexResult.stderr || `codex exited with status ${codexResult.status}`,
+          output: "",
+          metadata: {
+            repoPath: fixture.repoPath,
+            artifactPath,
+            skillPath: fixture.skillPath,
+            transcriptPath,
+            eventLogPath,
+            scenarioLogPath
+          }
+        };
+      }
+
+      if (lastMessage) {
+        break;
+      }
+
+      if (attempt === codexMaxAttempts) {
+        return {
+          error: "codex completed without a final agent message",
+          output: "",
+          metadata: {
+            repoPath: fixture.repoPath,
+            artifactPath,
+            skillPath: fixture.skillPath,
+            transcriptPath,
+            eventLogPath,
+            scenarioLogPath
+          }
+        };
+      }
     }
 
-    const parsed = parseCodexJsonl(codexResult.stdout ?? "");
     const repoState = runButStatus(fixture.repoPath, butBinary, commandEnv);
-    const lastMessage = readFileSync(transcriptPath, "utf8").trim() || parsed.lastMessage;
     const metadata: CodexProviderMetadata = {
       repoPath: fixture.repoPath,
       artifactPath,
@@ -191,7 +263,7 @@ export default class CodexIntegrationProvider implements ApiProvider {
       output: lastMessage,
       raw: {
         promptPath,
-        stdout: codexResult.stdout
+        stdout: lastStdout
       },
       metadata
     };

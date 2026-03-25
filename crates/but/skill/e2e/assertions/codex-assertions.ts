@@ -110,6 +110,15 @@ export function assertAskedClarificationQuestion(output: string, context: { vars
   return output.includes(question);
 }
 
+export function assertAskedPickTargetClarification(output: string): boolean {
+  const normalized = output.toLowerCase();
+  return normalized.includes("target branch")
+    && normalized.includes("receive")
+    && normalized.includes("pick")
+    && normalized.includes("commit")
+    && normalized.includes("?");
+}
+
 export function assertAskedAllClarificationQuestions(output: string): boolean {
   return [
     "Does this task depend on unmerged work from `main` or another branch?",
