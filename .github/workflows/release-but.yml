@@ -1,0 +1,38 @@
+name: Release but (GitHub Releases)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (for example: v0.21.0 or v0.21.0-rc.1)"
+        required: true
+        type: string
+      prerelease_mode:
+        description: "How prerelease flag is determined"
+        required: false
+        default: auto
+        type: choice
+        options:
+          - auto
+          - "true"
+          - "false"
+      target_commitish:
+        description: "Target commit (used when tag does not exist yet)"
+        required: false
+        default: main
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: ./.github/workflows/release-but-reusable.yml
+    with:
+      tag: ${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.tag }}
+      prerelease_mode: ${{ github.event.inputs.prerelease_mode || 'auto' }}
+      target_commitish: ${{ github.event.inputs.target_commitish || github.sha }}
+    secrets: inherit
