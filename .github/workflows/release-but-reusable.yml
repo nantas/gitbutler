@@ -111,6 +111,12 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Ensure rust target is installed
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup target add "${{ matrix.target }}"
+
       - name: Install Linux build dependencies
         if: matrix.os == 'ubuntu-latest'
         shell: bash
